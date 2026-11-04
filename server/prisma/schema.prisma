@@ -1,0 +1,213 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum BoardRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum BoardType {
+  PERSONAL
+  TEAM
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum NotificationType {
+  INVITE
+  DUE_SOON
+  OVERDUE
+  ASSIGNED
+  COMMENT
+  PHOTO
+}
+
+model User {
+  id                String   @id @default(cuid())
+  name              String
+  email             String   @unique
+  passwordHash      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  avatar            String? 
+  avatarPublicId    String? 
+  boardMemberships  BoardMember[]
+  ownedBoards       Board[]  @relation("BoardOwner")
+  taskAssignments   TaskAssignee[]
+  createdTasks         Task[]             @relation("TaskCreator")
+  sentInvites          BoardInvite[]      @relation("InviteSender")
+  notifications        Notification[]
+  activityEvents       ActivityEvent[]    @relation("ActivityActor")
+  comments             TaskComment[]      @relation("CommentAuthor")
+  uploadedAttachments  TaskAttachment[]   @relation("AttachmentUploader")
+  }
+
+model Board {
+  id          String     @id @default(cuid())
+  name        String
+  description String     @default("")
+  type        BoardType
+  ownerId     String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  members     BoardMember[]
+  tasks       Task[]
+  owner       User       @relation("BoardOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  invites        BoardInvite[]
+  notifications  Notification[]
+  activityEvents ActivityEvent[]
+}
+
+model BoardMember {
+  id       String    @id @default(cuid())
+  boardId  String
+  userId   String
+  role     BoardRole
+  joinedAt DateTime  @default(now())
+
+  board    Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, userId])
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String       @db.Text
+  status      TaskStatus   @default(OPEN)
+  priority    TaskPriority @default(LOW)
+  dueDate     DateTime?
+  position    Float        @default(0)
+  boardId     String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  board       Board        @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  assignees   TaskAssignee[]
+
+  coverUrl      String? @db.VarChar(1024)
+  coverPublicId String?
+  createdBy     String?
+  creator       User?   @relation("TaskCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  comments      TaskComment[]
+  attachments   TaskAttachment[]
+  notifications Notification[]
+  activityEvents ActivityEvent[]
+}
+
+model TaskAssignee {
+  id     String @id @default(cuid())
+  taskId String
+  userId String
+
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+}
+
+model BoardInvite {
+  id            String       @id @default(cuid())
+  boardId       String
+  invitedEmail  String
+  invitedBy     String?
+  status        InviteStatus @default(PENDING)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  respondedAt   DateTime?
+
+  board         Board        @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  sender        User?        @relation("InviteSender", fields: [invitedBy], references: [id], onDelete: SetNull)
+  notifications Notification[]
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String           @db.Text
+  read      Boolean          @default(false)
+  boardId   String?
+  taskId    String?
+  inviteId  String?
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board     Board?           @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  task      Task?            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  invite    BoardInvite?     @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+}
+
+model ActivityEvent {
+  id         String   @id @default(cuid())
+  boardId    String
+  taskId     String?
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  board      Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  task       Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  actor      User?    @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  authorId  String?
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author    User?    @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+}
+
+model TaskAttachment {
+  id           String   @id @default(cuid())
+  taskId       String
+  uploadedBy   String?
+  fileName     String
+  mimeType     String?
+  url          String   @db.VarChar(1024)
+  publicId     String?
+  resourceType String   @default("image")
+  size         Int
+  createdAt    DateTime @default(now())
+
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploader     User?    @relation("AttachmentUploader", fields: [uploadedBy], references: [id], onDelete: SetNull)
+}
+

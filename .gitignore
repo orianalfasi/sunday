@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables (secrets)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Prisma generated client
+server/src/generated/
+
+# Prisma generated client
+server/src/generated/
+
+# Personal notes
+docs/
+
+# Personal Cursor rules
+.cursor/
+
+# Editor folders
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
