@@ -93,12 +93,3 @@ Open http://localhost:5173. Vite proxies `/api` and `/socket.io` to the server.
 
 Socket rooms: `board:<id>` for card events, `user:<id>` for `notification:new`. The handshake sends `{ auth: { token } }`.
 
-## Deploy
-
-Configs are ready:
-
-- **Client:** Vercel, root directory `client`, env `VITE_API_URL` = the Render URL
-- **API:** Render Blueprint `render.yaml`, env `DATABASE_URL`, `JWT_SECRET`, `CLIENT_ORIGIN`
-- **MySQL:** a hosted instance (Aiven, PlanetScale, or similar). Point `DATABASE_URL` at it, then `npx prisma migrate deploy` and `npm run seed` on the API box.
-
-SPA fallback is in `client/vercel.json`. File uploads need a free Cloudinary account.
